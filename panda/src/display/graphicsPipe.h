@@ -102,6 +102,10 @@ PUBLISHED:
   virtual void lookup_cpu_data();
 
   virtual std::string get_interface_name() const=0;
+
+  // Whether this pipe supports externally-managed callback windows.
+  virtual bool supports_callback_window() const { return true; }
+
   MAKE_PROPERTY(interface_name, get_interface_name);
 
 public:

@@ -1,3 +1,4 @@
+#include <cstdio>
 /**
  * PANDA 3D SOFTWARE
  * Copyright (c) Carnegie Mellon University.  All rights reserved.
@@ -348,7 +349,8 @@ make_output(GraphicsPipe *pipe,
   }
 
   // Are we really asking for a callback window?
-  if ((flags & GraphicsPipe::BF_require_callback_window)!=0) {
+  if ((flags & GraphicsPipe::BF_require_callback_window)!=0 &&
+      pipe->supports_callback_window()) {
     PT(GraphicsStateGuardian) this_gsg = gsg;
     if (this_gsg == nullptr) {
       // If we don't already have a GSG, we have to ask the pipe to make a new
@@ -367,6 +369,14 @@ make_output(GraphicsPipe *pipe,
     // Couldn't make a callback window, because the pipe wouldn't make an
     // unencumbered GSG.
     return nullptr;
+  }
+
+  // Native-window pipes may implement their own window instead of
+  // using CallbackGraphicsWindow.
+  if ((flags & GraphicsPipe::BF_require_callback_window) != 0 &&
+      !pipe->supports_callback_window()) {
+    flags &= ~GraphicsPipe::BF_require_callback_window;
+    flags |= GraphicsPipe::BF_require_window;
   }
 
   // Determine if a parasite buffer meets the user's specs.
@@ -2146,6 +2156,7 @@ do_add_gsg(GraphicsStateGuardian *gsg, GraphicsPipe *pipe) {
 
   ReMutexHolder holder(_lock);
   nassertv(gsg->get_pipe() == pipe && gsg->get_engine() == this);
+
   gsg->_threading_model = _threading_model;
   if (!_default_loader.is_null()) {
     gsg->set_loader(_default_loader);

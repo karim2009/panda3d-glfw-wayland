@@ -1,0 +1,37 @@
+#include "config_glfwdisplay.h"
+#include "glfwGraphicsPipe.h"
+#include "glfwGraphicsWindow.h"
+#include "graphicsPipeSelection.h"
+#include "pandaSystem.h"
+
+Configure(config_glfwdisplay);
+NotifyCategoryDef(glfwdisplay, "display");
+
+void init_libglfwdisplay() {
+  static bool initialized = false;
+
+  if (initialized) {
+    return;
+  }
+
+  initialized = true;
+
+  glfwGraphicsPipe::init_type();
+  glfwGraphicsWindow::init_type();
+
+  GraphicsPipeSelection *selection =
+    GraphicsPipeSelection::get_global_ptr();
+
+  selection->add_pipe_type(
+    glfwGraphicsPipe::get_class_type(),
+    glfwGraphicsPipe::pipe_constructor
+  );
+
+  PandaSystem::get_global_ptr()->set_system_tag(
+    "GLFW3", "window_system", "Wayland"
+  );
+}
+
+ConfigureFn(config_glfwdisplay) {
+  init_libglfwdisplay();
+}

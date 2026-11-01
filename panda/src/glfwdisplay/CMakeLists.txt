@@ -1,0 +1,40 @@
+if(NOT HAVE_GL)
+  return()
+endif()
+
+find_package(glfw3 3.4 REQUIRED)
+
+set(P3GLFWDISPLAY_HEADERS
+  config_glfwdisplay.h
+  glfwGraphicsPipe.h
+  glfwGraphicsWindow.h
+  glfwGraphicsStateGuardian.h
+)
+
+set(P3GLFWDISPLAY_SOURCES
+  config_glfwdisplay.cxx
+  glfwGraphicsPipe.cxx
+  glfwGraphicsWindow.cxx
+  glfwGraphicsStateGuardian.cxx
+)
+
+add_component_library(p3glfwdisplay SYMBOL BUILDING_PANDAGL
+  INIT init_libglfwdisplay config_glfwdisplay.h
+  ${P3GLFWDISPLAY_HEADERS}
+  ${P3GLFWDISPLAY_SOURCES}
+)
+
+target_link_libraries(p3glfwdisplay p3glgsg glfw)
+
+if(NOT BUILD_METALIBS)
+  install(TARGETS p3glfwdisplay
+    EXPORT OpenGL COMPONENT OpenGL
+    DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE COMPONENT OpenGLDevel
+  )
+endif()
+
+install(FILES ${P3GLFWDISPLAY_HEADERS}
+  COMPONENT OpenGLDevel
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/panda3d
+)

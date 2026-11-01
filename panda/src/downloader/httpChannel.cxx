@@ -1,3 +1,4 @@
+#include <openssl/asn1.h>
 /**
  * PANDA 3D SOFTWARE
  * Copyright (c) Carnegie Mellon University.  All rights reserved.
@@ -1652,7 +1653,7 @@ run_ssl_handshake() {
     return false;
   }
 
-  X509_NAME *subject = X509_get_subject_name(cert);
+  const X509_NAME *subject = X509_get_subject_name(cert);
   if (downloader_cat.is_debug()) {
     string org_name = get_x509_name_component(subject, NID_organizationName);
     string org_unit_name = get_x509_name_component(subject, NID_organizationalUnitName);
@@ -3393,7 +3394,7 @@ validate_server_name(X509 *cert) {
   if (cert_names.empty()) {
     // If there were no DNS names, use the common name instead.
 
-    X509_NAME *xname = X509_get_subject_name(cert);
+    const X509_NAME *xname = X509_get_subject_name(cert);
     if (xname != nullptr) {
       string common_name = get_x509_name_component(xname, NID_commonName);
       cert_names.push_back(common_name);
@@ -3470,7 +3471,7 @@ match_cert_name(const string &cert_name, const string &hostname) {
  * or empty string if it is not.
  */
 string HTTPChannel::
-get_x509_name_component(X509_NAME *name, int nid) {
+get_x509_name_component(const X509_NAME *name, int nid) {
   ASN1_OBJECT *obj = OBJ_nid2obj(nid);
 
   if (obj == nullptr) {
@@ -3483,8 +3484,8 @@ get_x509_name_component(X509_NAME *name, int nid) {
     return string();
   }
 
-  ASN1_STRING *data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name, i));
-  return string((char *)data->data, data->length);
+  const ASN1_STRING *data = X509_NAME_ENTRY_get_data(X509_NAME_get_entry(name, i));
+  return string((const char *)ASN1_STRING_get0_data(data), ASN1_STRING_length(data));
 }
 
 /**

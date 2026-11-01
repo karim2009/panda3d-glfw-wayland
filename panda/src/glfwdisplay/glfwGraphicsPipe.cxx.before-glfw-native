@@ -1,0 +1,103 @@
+#include "glfwGraphicsPipe.h"
+#include "glfwCallbackWindow.h"
+#include "config_glfwdisplay.h"
+#include "../glxdisplay/posixGraphicsStateGuardian.h"
+
+#include <GLFW/glfw3.h>
+#include <cstdio>
+
+TypeHandle glfwGraphicsPipe::_type_handle;
+
+glfwGraphicsPipe::glfwGraphicsPipe() {
+  glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_WAYLAND);
+
+  glfwSetErrorCallback([](int code, const char *description) {
+    fprintf(stderr, "GLFW ERROR %d: %s\n", code, description);
+  });
+
+  _is_valid = glfwInit() == GLFW_TRUE;
+  _supported_types = OT_window;
+}
+
+glfwGraphicsPipe::~glfwGraphicsPipe() {
+  if (_is_valid) {
+    glfwTerminate();
+  }
+}
+
+std::string glfwGraphicsPipe::get_interface_name() const {
+  return "GLFW3 Wayland";
+}
+
+PT(GraphicsPipe) glfwGraphicsPipe::pipe_constructor() {
+  return new glfwGraphicsPipe;
+}
+
+PT(GraphicsStateGuardian)
+glfwGraphicsPipe::make_callback_gsg(GraphicsEngine *engine) {
+  fprintf(stderr, "GLFW: creating PosixGraphicsStateGuardian\\n");
+  return new PosixGraphicsStateGuardian(engine, this);
+}
+
+PT(GraphicsOutput) glfwGraphicsPipe::make_output(
+  std::string_view name,
+  const FrameBufferProperties &fb_prop,
+  const WindowProperties &win_prop,
+  int flags,
+  GraphicsEngine *engine,
+  GraphicsStateGuardian *gsg,
+  GraphicsOutput *host,
+  int retry,
+  bool &precertify
+) {
+  precertify = false;
+
+  if (!_is_valid || retry != 0) {
+    return nullptr;
+  }
+
+  if (flags & BF_refuse_window) {
+    return nullptr;
+  }
+
+  int width = win_prop.get_x_size();
+  int height = win_prop.get_y_size();
+
+  if (width <= 0) width = 1280;
+  if (height <= 0) height = 720;
+
+  glfwDefaultWindowHints();
+
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+  glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+  glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+
+  GLFWwindow *window = glfwCreateWindow(
+    width,
+    height,
+    std::string(name).c_str(),
+    nullptr,
+    nullptr
+  );
+
+  if (!window) {
+    fprintf(stderr, "GLFW: window creation failed\n");
+    return nullptr;
+  }
+
+  glfwMakeContextCurrent(window);
+
+  return new glfwCallbackWindow(
+    engine,
+    this,
+    std::string(name),
+    fb_prop,
+    win_prop,
+    flags,
+    gsg,
+    window
+  );
+}

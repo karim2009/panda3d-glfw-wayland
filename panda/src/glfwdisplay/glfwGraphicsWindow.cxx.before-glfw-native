@@ -1,0 +1,125 @@
+#include "glfwGraphicsWindow.h"
+#include "glfwGraphicsPipe.h"
+#include "config_glfwdisplay.h"
+#include "../glxdisplay/posixGraphicsStateGuardian.h"
+#include "glgsg.h"
+#include "pStatTimer.h"
+#include "clockObject.h"
+
+#include <GL/gl.h>
+
+TypeHandle glfwGraphicsWindow::_type_handle;
+
+glfwGraphicsWindow::glfwGraphicsWindow(
+  GraphicsEngine *engine,
+  GraphicsPipe *pipe,
+  std::string name,
+  const FrameBufferProperties &fb_prop,
+  const WindowProperties &win_prop,
+  int flags,
+  GraphicsStateGuardian *gsg,
+  GraphicsOutput *host
+) :
+  GraphicsWindow(engine, pipe, std::move(name),
+                 fb_prop, win_prop, flags, gsg, host) {
+}
+
+glfwGraphicsWindow::~glfwGraphicsWindow() {
+  close_window();
+}
+
+bool glfwGraphicsWindow::open_window() {
+  if (_window) return true;
+
+  glfwDefaultWindowHints();
+  glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+  glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 2);
+  glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
+  int width = get_properties().get_x_size();
+  int height = get_properties().get_y_size();
+
+  if (width <= 0) width = 1280;
+  if (height <= 0) height = 720;
+
+  _window = glfwCreateWindow(
+    width, height, get_name().c_str(), nullptr, nullptr
+  );
+
+  if (!_window) {
+    glfwdisplay_cat.error() << "GLFW window creation failed\n";
+    return false;
+  }
+
+  glfwMakeContextCurrent(_window);
+
+  if (_gsg == nullptr) {
+    _gsg = new PosixGraphicsStateGuardian(_engine, _pipe);
+  }
+
+  glfwSwapInterval(1);
+  return true;
+}
+
+void glfwGraphicsWindow::close_window() {
+  if (_window) {
+    glfwMakeContextCurrent(nullptr);
+    glfwDestroyWindow(_window);
+    _window = nullptr;
+  }
+
+  GraphicsWindow::close_window();
+}
+
+bool glfwGraphicsWindow::begin_frame(
+  FrameMode mode, Thread *current_thread
+) {
+  begin_frame_spam(mode);
+
+  if (!_window || !_gsg) return false;
+
+  glfwMakeContextCurrent(_window);
+
+
+  GLGraphicsStateGuardian *gsg =
+    DCAST(GLGraphicsStateGuardian, _gsg);
+
+  gsg->reset_if_new();
+  _gsg->set_current_properties(&get_fb_properties());
+
+  return _gsg->begin_frame(current_thread);
+}
+
+void glfwGraphicsWindow::end_frame(
+  FrameMode mode, Thread *current_thread
+) {
+  end_frame_spam(mode);
+
+  if (!_gsg) return;
+
+  if (mode == FM_render) copy_to_textures();
+
+  _gsg->end_frame(current_thread);
+
+  if (mode == FM_render) trigger_flip();
+}
+
+void glfwGraphicsWindow::end_flip() {
+  if (_window && _gsg != nullptr && _flip_ready) {
+    glfwSwapBuffers(_window);
+  }
+  GraphicsWindow::end_flip();
+}
+
+void glfwGraphicsWindow::process_events() {
+  if (_window) {
+    glfwPollEvents();
+
+    if (glfwWindowShouldClose(_window)) {
+      request_close();
+    }
+  }
+
+  GraphicsWindow::process_events();
+}

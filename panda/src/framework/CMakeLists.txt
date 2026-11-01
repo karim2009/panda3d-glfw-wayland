@@ -1,11 +1,13 @@
 set(P3FRAMEWORK_HEADERS
   config_framework.h
+  InitScene.h
   pandaFramework.I pandaFramework.h
   windowFramework.I windowFramework.h
 )
 
 set(P3FRAMEWORK_SOURCES
   config_framework.cxx
+  InitScene.cxx
   pandaFramework.cxx
   windowFramework.cxx
 )

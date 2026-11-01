@@ -3,5 +3,5 @@ if(NOT BUILD_TOOLS)
 endif()
 
 add_executable(pview pview.cxx)
-target_link_libraries(pview p3framework)
+target_link_libraries(pview p3framework p3glfwdisplay)
 install(TARGETS pview EXPORT Tools COMPONENT Tools DESTINATION ${CMAKE_INSTALL_BINDIR})

@@ -445,17 +445,25 @@ temporary(std::string_view dirname, const string &prefix, const string &suffix,
 #endif
 
   if (fdirname.empty()) {
-    // If we are not given a dirname, use the system tempnam() function to
-    // create a system-defined temporary filename.
-#ifdef _MSC_VER
+#ifdef _WIN32
     char *name = _tempnam(nullptr, prefix.c_str());
-#else
-    char *name = tempnam(nullptr, prefix.c_str());
-#endif
+    if (name == nullptr) return Filename();
     Filename result = Filename::from_os_specific(name);
     free(name);
     result.set_type(type);
     return result;
+#else
+    Filename temp_dir = Filename::get_temp_directory();
+    Filename temp_path(temp_dir, Filename(prefix + "XXXXXX" + suffix));
+    string name = temp_path.to_os_specific();
+    int fd = mkstemps(&name[0], suffix.size());
+    if (fd < 0) return Filename();
+    close(fd);
+    ::unlink(name.c_str());
+    Filename result = Filename::from_os_specific(name);
+    result.set_type(type);
+    return result;
+#endif
   }
 
   // If we *are* given a dirname, then use our own algorithm to make up a
